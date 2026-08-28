@@ -79,7 +79,7 @@ import numpy as np
 from .intrinsic_dim import id_scaling
 
 
-def id_at_scale(X: np.ndarray, k: int, seed: int = 0) -> float:
+def id_at_scale(X: np.ndarray, k: int, seed: int = 0, n_jobs: int | None = 1) -> float:
     """GRIDE's ID estimate at one neighbourhood size `k`.
 
     Implemented by asking `id_scaling` for a sweep that *ends* at k (range_max = 2k)
@@ -94,7 +94,11 @@ def id_at_scale(X: np.ndarray, k: int, seed: int = 0) -> float:
     """
     if k < 1 or (k & (k - 1)):
         raise ValueError(f"k must be a power of two (GRIDE sweeps k=1,2,4,...); got {k}")
-    return float(id_scaling(X, range_max=2 * k, n_points=None, seed=seed)["id"][-1])
+    # n_jobs=1 by default: these are many small estimates on matched-n subsets, where
+    # DADApy's default of one worker per core is pure spawn overhead, and the stage is
+    # meant to be parallelised across TASKS instead.
+    return float(id_scaling(X, range_max=2 * k, n_points=None, seed=seed,
+                            n_jobs=n_jobs)["id"][-1])
 
 
 def _subsample(rng: np.random.Generator, pool: np.ndarray, n: int) -> np.ndarray:
