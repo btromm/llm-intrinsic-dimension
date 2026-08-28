@@ -67,8 +67,16 @@ class Config:
     n_corpus: int = 10_000
     corpus_seq_len: int = 20
     # Cheng et al. average ID over three corpora; Table C.1 lists a separate
-    # GRIDE scale for the "sane" and "shuffled" mode of each.
-    corpora: tuple[str, ...] = ("pile", "wikitext", "bookcorpus")
+    # GRIDE scale for the "sane" and "shuffled" mode of each. We keep only
+    # bookcorpus, because Conneau et al. built all five probing sets from the
+    # Toronto Book Corpus: it is the corpus the tasks are drawn FROM, which makes
+    # it the baseline they can be compared against directly, and it is already
+    # the corpus whose scale they borrow (see reference_corpus below). Pile and
+    # wikitext answer a different question -- whether the ID profile is
+    # domain-specific rather than a property of this text -- and each extra
+    # corpus costs its own extraction plus two more tags to sweep in `id`:
+    #     python run.py extract --corpora bookcorpus pile wikitext
+    corpora: tuple[str, ...] = ("bookcorpus",)
 
     # Which corpus's GRIDE scale the probing tasks borrow. Conneau et al. built
     # all five probing sets from the Toronto Book Corpus, so bookcorpus is the
