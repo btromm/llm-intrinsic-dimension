@@ -100,8 +100,8 @@ need the extra power for the McNemar tests.
 
 ## Running it on a cluster
 
-`slurm/` holds a complete Slurm submission for the Qwen3 ladder (0.6B, 1.7B, 4B,
-8B) on a single H100: one job per stage, chained by dependencies, one array task
+`slurm/` holds a complete Slurm submission for the Qwen3 ladder (1.7B, 4B, 8B)
+on a single H100: one job per stage, chained by dependencies, one array task
 per model. Edit `slurm/config.sh` (account, partition, scratch), then
 
 ```bash

@@ -6,7 +6,7 @@ probes at each layer, and test whether the ID peak predicts where probes succeed
 The project README explains the science; this file is only about getting it to
 run on a scheduler.
 
-Four Qwen3 base models by default — 0.6B, 1.7B, 4B, 8B — one GPU at a time, no
+Three Qwen3 base models by default — 1.7B, 4B, 8B — one GPU at a time, no
 distributed training, no multi-node anything. The largest job is a single H100
 holding an 8B model in bfloat16 (~16 GB of weights).
 
@@ -90,11 +90,10 @@ dominates everything else the run writes. At default sizes (25k/5k/10k per task,
 
 | model | layers × d_model | per sequence | total activations |
 |---|---|---|---|
-| Qwen3-0.6B-Base | 28 × 1024 | 0.06 MB | ~27 GB |
 | Qwen3-1.7B-Base | 28 × 2048 | 0.12 MB | ~55 GB |
 | Qwen3-4B-Base | 36 × 2560 | 0.19 MB | ~87 GB |
 | Qwen3-8B-Base | 36 × 4096 | 0.30 MB | ~139 GB |
-| **all four** | | | **~310 GB** |
+| **all three** | | | **~280 GB** |
 
 These are estimates from each model's published config; the preflight job prints
 the exact projection for your settings, compares it against the free space on
@@ -107,7 +106,7 @@ your scratch, and fails if it does not fit. Three ways to shrink it:
   test has no power below that, and every layer comes back `inconclusive`.
   The project README explains the arithmetic.
 * Run models one at a time and reclaim as you go:
-  `bash slurm/cleanup_activations.sh Qwen3-0.6B-Base` (asks for confirmation,
+  `bash slurm/cleanup_activations.sh Qwen3-1.7B-Base` (asks for confirmation,
   and refuses while that model's results are incomplete).
 
 Results (`results/<model-tag>/`) are small — CSVs, figures, and one npz of

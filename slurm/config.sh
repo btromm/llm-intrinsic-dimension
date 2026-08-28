@@ -44,7 +44,7 @@ EXTRA_ENV_SETUP=''
 
 # -----------------------------------------------------------------------------
 # 3. Storage.
-#    Activations are BIG (~140 GB for Qwen3-8B alone, ~310 GB for the four-model
+#    Activations are BIG (~140 GB for Qwen3-8B alone, ~280 GB for the three-model
 #    ladder at default sizes). They must live on scratch, not in $HOME.
 #    setup.sh symlinks <repo>/activations -> $ACTIVATIONS_DIR.
 #    `run.py check` (and 00_preflight) print the exact projection before anything
@@ -61,12 +61,11 @@ HF_CACHE_DIR="$SCRATCH_BASE/hf-cache"     # becomes HF_HOME (models + datasets)
 #    Lower a batch size if a job dies with CUDA out-of-memory.
 # -----------------------------------------------------------------------------
 MODELS=(
-  "Qwen/Qwen3-0.6B-Base"
   "Qwen/Qwen3-1.7B-Base"
   "Qwen/Qwen3-4B-Base"
   "Qwen/Qwen3-8B-Base"
 )
-BATCH_SIZES=(256 256 128 128)
+BATCH_SIZES=(256 128 128)
 DEFAULT_BATCH=128           # used for any model not listed above
 
 # Dataset sizes. Empty = the pipeline default (25000/5000/10000 per task).
