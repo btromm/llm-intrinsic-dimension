@@ -98,6 +98,22 @@ Override with `--n-train/--n-val/--n-test`. The default is already well past
 where ID estimates and probe accuracies saturate; go to full scale only if you
 need the extra power for the McNemar tests.
 
+## Running it on a cluster
+
+`slurm/` holds a complete Slurm submission for the Qwen3 ladder (0.6B, 1.7B, 4B,
+8B) on a single H100: one job per stage, chained by dependencies, one array task
+per model. Edit `slurm/config.sh` (account, partition, scratch), then
+
+```bash
+bash slurm/setup.sh         # login node: build the env, prefetch weights + data
+bash slurm/submit_all.sh    # submit; -n prints the plan without submitting
+```
+
+`slurm/README.md` covers resources, disk, what is resumable, and the failure
+modes worth knowing before a 24-hour job starts. A preflight job checks the env,
+GPU, weights, data and free space on a compute node before anything long is
+queued behind it.
+
 ## Walkthrough notebook
 
 `notebooks/walkthrough.ipynb` explains what each stage does and why, with runnable cells against
