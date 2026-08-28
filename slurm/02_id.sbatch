@@ -7,7 +7,8 @@
 #
 #  * NOT resumable. The stage sweeps every scale of every layer of every tag and
 #    writes id_profiles.csv at the end, so a walltime kill loses the whole job.
-#    Give it room: ~4-6 h for Qwen3-8B with 3 corpora and the shuffled control.
+#    Give it room: ~2-4 h for Qwen3-8B (5 task tags plus the bookcorpus
+#    baseline in both modes, ~37 layers each).
 #  * The array is throttled to ONE task at a time (%1, set in submit_all.sh).
 #    All models share scales.json, and the stage rewrites that file wholesale,
 #    so two models finishing together would clobber each other's pinned scale.

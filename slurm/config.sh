@@ -44,7 +44,7 @@ EXTRA_ENV_SETUP=''
 
 # -----------------------------------------------------------------------------
 # 3. Storage.
-#    Activations are BIG (~140 GB for Qwen3-8B alone, ~280 GB for the three-model
+#    Activations are BIG (~127 GB for Qwen3-8B alone, ~260 GB for the three-model
 #    ladder at default sizes). They must live on scratch, not in $HOME.
 #    setup.sh symlinks <repo>/activations -> $ACTIVATIONS_DIR.
 #    `run.py check` (and 00_preflight) print the exact projection before anything
@@ -75,10 +75,11 @@ N_TRAIN=""
 N_VAL=""
 N_TEST=""
 
-# Empty = the pipeline default (pile wikitext bookcorpus) for the ID baseline.
-# Cutting this to "pile" saves ~2/3 of the corpus extraction and ID time, but
-# the probing tasks then borrow their GRIDE scale from a corpus that is not the
-# one SentEval was built from -- set REFERENCE_CORPUS to match if you do.
+# Empty = the pipeline default, which is bookcorpus alone: the corpus Conneau
+# et al. built the probing sets from, hence both the baseline the tasks compare
+# against and the corpus whose GRIDE scale they borrow. Adding corpora
+# (CORPORA="bookcorpus pile wikitext") asks a different question -- whether the
+# ID profile is domain-specific -- at one extraction plus two more `id` tags each.
 CORPORA=""
 REFERENCE_CORPUS=""         # empty = pipeline default (bookcorpus)
 

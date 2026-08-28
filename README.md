@@ -49,7 +49,7 @@ disk the run will need.
 
 ```bash
 python run.py extract    # last-token hidden states -> activations/  (the expensive stage)
-python run.py id         # GRIDE ID profile per layer, per task + Pile baseline
+python run.py id         # GRIDE ID profile per layer, per task + corpus baseline
 python run.py probe      # linear + MLP probe at every layer x task x seed
 python run.py analyze    # McNemar, FDR, ID<->accuracy correlations -> results/
 ```
@@ -72,7 +72,7 @@ the extraction rather than to anything learned.
 
 ```bash
 python run.py extract --model Qwen/Qwen3-1.7B-Base --random-init --no-shuffled
-python run.py id      --model Qwen/Qwen3-1.7B-Base --random-init --reference-corpus pile
+python run.py id      --model Qwen/Qwen3-1.7B-Base --random-init
 ```
 
 Every stage is resumable — it skips existing outputs unless you pass `--force`.
@@ -128,11 +128,20 @@ conda run -n id jupyter lab notebooks/walkthrough.ipynb
 ## Design decisions, and where they depart from Cheng et al.
 
 **Per-task ID, plus the corpus baseline.** Cheng et al. compute one ID profile
-per *corpus*. Your hypothesis — that different tasks peak at different layers —
-is only testable if ID is estimated from each task's own representations, so
-that is the primary measurement. `run.py id` additionally computes their
-Pile-10k baseline (10k sequences × 20 tokens) so you can show whether per-task
-peaks actually depart from the generic profile, or merely echo it.
+per *corpus*, averaged over three. Your hypothesis — that different tasks peak
+at different layers — is only testable if ID is estimated from each task's own
+representations, so that is the primary measurement. `run.py id` additionally
+computes a corpus baseline (10k sequences × 20 tokens) so you can show whether
+per-task peaks actually depart from the corpus profile, or merely echo it.
+
+**One corpus, and it is bookcorpus.** Conneau et al. built all five probing sets
+from the Toronto Book Corpus, so bookcorpus is the corpus the tasks are drawn
+from: it is both the baseline they can be compared against directly and the
+corpus whose GRIDE scale they borrow, which puts task ID and baseline ID on the
+same scale by construction. Pile and wikitext are still available
+(`--corpora bookcorpus pile wikitext`) but answer a different question — whether
+the ID profile is domain-specific rather than a property of this text — and each
+one costs an extraction plus two more tags to sweep in the `id` stage.
 `peak_alignment.csv` reports the spread of per-task peak layers: **a spread near
 zero would mean one shared abstraction phase, and would not support the
 hypothesis** — worth knowing before you interpret any correlation.

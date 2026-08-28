@@ -86,14 +86,15 @@ finishing together would clobber each other's pinned GRIDE scale.
 
 Activation storage is `n_sequences × (n_layers + 1) × d_model × 2` bytes, and it
 dominates everything else the run writes. At default sizes (25k/5k/10k per task,
-5 tasks, plus the word-shuffled control, plus 3 corpora × 2 modes × 10k):
+5 tasks, plus the word-shuffled control, plus the bookcorpus baseline in
+both modes, 10k sequences each):
 
 | model | layers × d_model | per sequence | total activations |
 |---|---|---|---|
-| Qwen3-1.7B-Base | 28 × 2048 | 0.12 MB | ~55 GB |
-| Qwen3-4B-Base | 36 × 2560 | 0.19 MB | ~87 GB |
-| Qwen3-8B-Base | 36 × 4096 | 0.30 MB | ~139 GB |
-| **all three** | | | **~280 GB** |
+| Qwen3-1.7B-Base | 28 × 2048 | 0.12 MB | ~50 GB |
+| Qwen3-4B-Base | 36 × 2560 | 0.19 MB | ~80 GB |
+| Qwen3-8B-Base | 36 × 4096 | 0.30 MB | ~127 GB |
+| **all three** | | | **~260 GB** |
 
 These are estimates from each model's published config; the preflight job prints
 the exact projection for your settings, compares it against the free space on
@@ -122,8 +123,8 @@ Slurm bills what you use, not what you ask for.
 
 | stage | expected | note |
 |---|---|---|
-| extract | 1–3 h | GPU-bound at first, then I/O-bound writing ~139 GB |
-| id | 4–6 h | CPU-bound. GRIDE is O(n²) over 10k points per layer per tag |
+| extract | 1–3 h | GPU-bound at first, then I/O-bound writing ~127 GB |
+| id | 2–4 h | CPU-bound. GRIDE is O(n²) over 10k points per layer per tag |
 | probe | 3–6 h | ~2200 small probe fits |
 | analyze | minutes | reads what is already on disk |
 | directions | 4–10 h | dominated by `magnitude`; `conditional-id` is capped by `CID_N_MATCH` |
@@ -174,7 +175,7 @@ did not finish. Re-run `extract`; it skips what already exists.
 
 **Compute nodes have no internet.** `setup.sh` downloads the model weights and
 the SentEval files on the login node, so those are fine offline. The ID
-*corpora* (`pile`, `wikitext`, `bookcorpus`) are read with the streaming API,
+*corpus* (`bookcorpus`) is read with the streaming API,
 which does need network at extraction time — the preflight job tests exactly
 this on a real compute node. If it fails there, either set a proxy through
 `EXTRA_ENV_SETUP` in `config.sh`, or drop the corpus baseline and pin the GRIDE
@@ -186,7 +187,7 @@ error message, which spells out the options).
 | stage | resumable? | what to do |
 |---|---|---|
 | extract | **yes** | each (tag, split) is written to `.partial` and renamed on success, and existing outputs are skipped. Just resubmit. |
-| id | no | writes everything at the end. Raise `TIME_ID`, or cut the corpus set (`CORPORA="pile"` with `REFERENCE_CORPUS="pile"`). |
+| id | no | writes everything at the end. Raise `TIME_ID`. With one corpus the sweep is already down to 5 task tags plus 2 corpus tags, and the only lever left is fewer tasks — which overwrites `id_profiles.csv`, so prefer the walltime. |
 | probe | no | writes `probe_results.csv` once, at the end, **and overwrites it**. Raise `TIME_PROBE` first. If your site caps walltime too low, run it in task-sized pieces (`--tasks sentence_length word_content`), move `probe_results.csv` and `probe_correct.npz` aside after each piece, and concatenate the CSVs / merge the npz keys before running `analyze` — the analysis reads both by `task/layer/kind/seed` key, so a straight concatenation is enough. Cutting `--seeds 1` (from three) is the cheaper fix. |
 | analyze | n/a | reads what is on disk; re-run freely |
 | directions | partial | both stages merge per task into their CSV under a lock, so completed tasks survive. Use `CID_STRIDE`/`MAG_STRIDE` to preview every other layer. |

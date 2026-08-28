@@ -139,9 +139,11 @@ SentEval ships ten probing tasks. Following Cheng et al., five are **dropped**:
 4. `probes.py` trains a linear probe and a 1×200 MLP on each layer's
    activations under an identical protocol; test accuracy is the task score.
 
-A separate, unlabelled Pile corpus (`NeelNanda/pile-10k`, 10k sequences
+A separate, unlabelled bookcorpus sample (`rojagtap/bookcorpus`, 10k sequences
 truncated to 20 tokens) provides the intrinsic-dimension baseline — it is not a
-probing task.
+probing task. It is the same corpus these probing sets were built from, so its
+ID profile is the one theirs can be compared against directly, and it is the
+corpus whose GRIDE scale they borrow.
 
 ## Sanity check
 

@@ -10,7 +10,7 @@ will need against the disk that is free.
 Exit status is 0 only if every REQUIRED check passed, so it is safe to put at
 the head of a Slurm dependency chain.
 
-    python slurm/preflight.py --models Qwen/Qwen3-8B-Base [--corpora pile ...]
+    python slurm/preflight.py --models Qwen/Qwen3-8B-Base [--corpora bookcorpus ...]
 """
 from __future__ import annotations
 

@@ -799,17 +799,17 @@ def main() -> None:
     ap.add_argument("--device", default=None)
     ap.add_argument("--seeds", type=int, nargs="+", default=None)
     ap.add_argument("--n-corpus", type=int, default=None,
-                    help="sequences for the Pile ID baseline (default 10000)")
+                    help="sequences per ID corpus (default 10000)")
     ap.add_argument("--compare-model", default=None,
                     help="second model for the H.1 cross-model CKA figure")
     ap.add_argument("--cka-task", default="bigram_shift",
                     help="task whose activations align the two models for CKA")
     ap.add_argument("--corpora", nargs="+", default=None,
-                    help="ID corpora to use (default: pile wikitext bookcorpus)")
+                    help="ID corpora to use (default: bookcorpus)")
     ap.add_argument("--no-shuffled", action="store_true",
                     help="skip the word-shuffled control (Fig 1 centre, Fig I.2)")
     ap.add_argument("--no-corpus", action="store_true",
-                    help="skip the Pile ID baseline (per-task ID only)")
+                    help="skip the corpus ID baseline (per-task ID only)")
     ap.add_argument("--no-tasks", action="store_true",
                     help="skip the probing tasks (corpus ID only). The untrained "
                          "control only needs the corpus profile, and the corpus is "

@@ -9,7 +9,7 @@
 #  belongs to the architecture or to the extraction rather than to anything the
 #  model learned.
 #
-#  Deliberately cheap: the Pile corpus only (10k sequences of 20 tokens), no
+#  Deliberately cheap: the corpus baseline only (10k sequences of 20 tokens), no
 #  probing tasks, no shuffled control. Outputs land under the separate
 #  <model>-randominit tag, so they can never overwrite the trained run.
 #
@@ -38,10 +38,9 @@ select_model
 banner
 
 run_stage extract --model "$MODEL" --random-init --no-tasks --no-shuffled \
-  --corpora pile --batch-size "$BATCH"
+  --batch-size "$BATCH"
 
-run_stage id --model "$MODEL" --random-init --no-shuffled \
-  --corpora pile --reference-corpus pile
+run_stage id --model "$MODEL" --random-init
 
 log "compare results/${MODEL_TAG}-randominit/id_profiles.csv against"
 log "        results/${MODEL_TAG}/id_profiles.csv -- the peak should be absent here."

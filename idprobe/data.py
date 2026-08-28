@@ -1,4 +1,4 @@
-"""Fetch and prepare the SentEval probing tasks plus the Pile corpus baseline.
+"""Fetch and prepare the SentEval probing tasks plus the corpus ID baseline.
 
 SentEval probing files are TSV with columns: split ("tr"/"va"/"te"), label, sentence.
 """
@@ -89,7 +89,7 @@ def shuffle_words(text: str, rng: "np.random.Generator") -> str:
     return " ".join(w)
 
 
-def prepare_corpus(cfg: Config, corpus: str = "pile", mode: str = "sane") -> list[str]:
+def prepare_corpus(cfg: Config, corpus: str = "bookcorpus", mode: str = "sane") -> list[str]:
     """Cheng et al.'s ID corpora: n_corpus documents truncated to corpus_seq_len tokens.
 
     Truncation to an exact token count happens in the extractor; here we only
