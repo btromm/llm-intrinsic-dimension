@@ -98,7 +98,23 @@ else
   [[ "$RUN_DIRECTIONS"  == "1" ]] && STAGE_LIST="$STAGE_LIST,directions"
   [[ "$RUN_RANDOM_INIT" == "1" ]] && STAGE_LIST="$STAGE_LIST,control"
 fi
-[[ $NO_PREFLIGHT -eq 1 ]] && STAGE_LIST="${STAGE_LIST//preflight,/}"
+
+# Normalise the list rather than editing the string: a substring removal of
+# "preflight," misses `-s preflight` and `-s extract,preflight`, where the name
+# is not followed by a comma, and would silently submit the job anyway.
+# Trimming also lets `-s "extract, id"` work -- `want` matches list elements
+# exactly, so a stray space would silently drop that stage.
+_stages=""
+IFS=',' read -ra _parts <<< "$STAGE_LIST"
+for _s in "${_parts[@]+"${_parts[@]}"}"; do
+  _s="${_s#"${_s%%[![:space:]]*}"}"      # strip leading space
+  _s="${_s%"${_s##*[![:space:]]}"}"      # strip trailing space
+  [[ -z "$_s" ]] && continue
+  [[ $NO_PREFLIGHT -eq 1 && "$_s" == "preflight" ]] && continue
+  _stages="${_stages:+$_stages,}$_s"
+done
+STAGE_LIST="$_stages"
+[[ -n "$STAGE_LIST" ]] || { echo "ERROR: no stages selected" >&2; exit 1; }
 
 ARRAY_GPU="0-$((N - 1))%$MAX_CONCURRENT"
 ARRAY_CPU="0-$((N - 1))%$MAX_CONCURRENT"
