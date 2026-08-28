@@ -117,9 +117,18 @@ queued behind it.
 ## Walkthrough notebook
 
 `notebooks/walkthrough.ipynb` explains what each stage does and why, with runnable cells against
-whatever results are already on disk. It covers the ID estimator and its scale trap, the last-token
+whatever results are already on disk. It is in two parts.
+
+**Part I (§1–8)** — the original replication: the ID estimator and its scale trap, the last-token
 representation choice, the linear-vs-MLP design, the equivalence-testing logic, and a claim-by-claim
 comparison against Cheng et al.
+
+**Part II (§9–12)** — everything added since, following `docs/NEXT_STEPS.md`: Step 0's
+prerequisites (§9), class-conditional ID (§10), and the magnitude readouts (§11). These sections run
+**without any results on disk** — each method is first demonstrated on synthetic data whose right
+answer is known by construction, because the failure mode of these estimators is a plausible number
+rather than a crash. The two ΔID caveats and the convergence trap below are each derived there from
+a runnable example.
 
 ```bash
 conda run -n id jupyter lab notebooks/walkthrough.ipynb
