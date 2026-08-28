@@ -16,11 +16,18 @@ dependent) and probes (5x the training data) are not comparable to its siblings.
 The file is now correct; the stages that consumed it are not.
 
 ```bash
-python run.py id     --model Qwen/Qwen3-1.7B-Base --reference-corpus pile --rechoose
-python run.py probe  --model Qwen/Qwen3-1.7B-Base --device cpu --seeds 1 2
+python run.py extract --model Qwen/Qwen3-1.7B-Base --corpora bookcorpus --no-tasks
+python run.py id --model Qwen/Qwen3-1.7B-Base --corpora bookcorpus \
+  --reference-corpus bookcorpus --rechoose --reuse-task-id-sweeps
+python run.py robustness --model Qwen/Qwen3-1.7B-Base
 python run.py analyze --model Qwen/Qwen3-1.7B-Base
-python run.py figures --model Qwen/Qwen3-1.7B-Base --compare-model Qwen/Qwen3-0.6B-Base
+python run.py figures --model Qwen/Qwen3-1.7B-Base
 ```
+
+The reuse flag is valid here because changing the reference corpus does not change
+any task activations or their full GRIDE sweeps; it only changes the shared `k` at
+which those cached curves are read. Probes and magnitude readouts do not depend on
+the reference corpus and must not be retrained for this correction.
 
 **0b. Re-test peak robustness under the new k-sweep mechanics.** The question is not
 "where is the peak" but "is the peak stable across scale". Report, per task:
@@ -236,5 +243,5 @@ pipeline and should not start until 1 has produced a result worth extending.
    (0.6B / 1.7B / 8B) that doubles as Cheng et al.'s Figure D.1?
 2. **Is `word_content` worth rescuing?** It needs ~50k training examples to be
    meaningful at 1000 classes. Otherwise drop it and report four tasks.
-3. **How many corpora?** Fig 1 and C.3 want three; we have Pile only. WikiText and
-   BookCorpus are wired up and cheap — `--corpora pile wikitext bookcorpus`.
+3. **Corpus choice.** BookCorpus is the required matched baseline and the only
+   supported corpus; the probing sets were drawn from it, so no corpus choice remains.

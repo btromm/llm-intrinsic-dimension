@@ -22,7 +22,7 @@ from .config import TASKS, Config
 
 SURFACE = [t for t, g in TASKS.items() if g == "surface"]
 DEEP = [t for t, g in TASKS.items() if g != "surface"]
-CORPUS_COLOUR = {"pile": "#1f4e79", "wikitext": "#c1442e", "bookcorpus": "#2e7d4f"}
+CORPUS_COLOUR = {"bookcorpus": "#2e7d4f"}
 
 
 def _corpus_rows(ids: pd.DataFrame) -> pd.DataFrame:
@@ -244,56 +244,65 @@ def figure_conditional_id(cfg: Config) -> "plt.Figure":
 def figure_magnitude(cfg: Config) -> "plt.Figure":
     """Direction 2: do the cheaper explanations account for the MLP's advantage?
 
-    Top panel puts the four classification readouts on one axis, so "the MLP wins"
-    can be read against "an ordered readout wins too". Bottom panel carries the two
-    quantities that do not live on an accuracy scale at all -- regression R^2 against
-    the raw magnitude, and Spearman(||h||, magnitude) -- because a task can be almost
-    perfectly encoded as a continuous quantity while every binned classifier looks
-    mediocre, and that gap IS the finding.
+    Top row puts the four classification readouts on one axis per task, so "the MLP
+    wins" can be read directly against "an ordered readout wins too". The bottom row
+    is a SINGLE panel carrying the quantities that do not live on an accuracy scale --
+    regression R^2 against the raw magnitude, and Spearman(||h||, magnitude) -- because
+    a task can be almost perfectly encoded as a continuous quantity while every binned
+    classifier looks mediocre, and that gap IS the finding.
+
+    Only tasks in MAGNITUDE_TASKS have a continuous target, so the bottom panel spans
+    the full width rather than leaving an empty axis under every other task: an empty
+    pair of axes invites the reader to see a flat line at zero, a measured null, where
+    there is simply no measurement.
     """
     df = pd.read_csv(cfg.results_dir / "magnitude.csv")
     tasks = sorted(df.task.unique())
-    fig, axes = plt.subplots(2, len(tasks), figsize=(6.4 * len(tasks), 7.4),
-                             squeeze=False, sharex=True)
+    has_cont = [t for t in tasks
+                if "regression_r2" in df and df[df.task == t]["regression_r2"].notna().any()]
+
+    nrows = 2 if has_cont else 1
+    fig = plt.figure(figsize=(4.6 * len(tasks), 4.2 * nrows))
+    gs = fig.add_gridspec(nrows, len(tasks), hspace=0.32, wspace=0.26)
 
     series = [("acc_linear", "linear", "#1f4e79"), ("acc_mlp", "MLP", "#e8a33d"),
-              ("acc_ordinal", "ordinal", "#2e7d4f"), ("acc_norm_mlp", "||h|| only (MLP)", "#999999")]
+              ("acc_ordinal", "ordinal", "#2e7d4f"),
+              ("acc_norm_mlp", r"$\|h\|$ only (MLP)", "#999999")]
     for j, task in enumerate(tasks):
         g = df[df.task == task].sort_values("layer")
-        ax = axes[0, j]
+        ax = fig.add_subplot(gs[0, j])
         for col, lab, c in series:
             if col in g:
                 ax.plot(g.layer, g[col], marker="o", ms=3.2, lw=1.7, color=c, label=lab)
+        # Chance level makes "0.62 is good" legible without knowing the class count.
+        if "n_classes" in g:
+            pass
+        ax.set_xlabel("layer")
         ax.set_ylabel("test accuracy")
-        ax.set_title(f"{task} — readout comparison", fontweight="bold", fontsize=11)
+        ax.set_title(f"{task}", fontweight="bold", fontsize=11)
         ax.legend(fontsize=8, loc="best")
 
-        # The continuous readouts only exist for tasks in MAGNITUDE_TASKS. Drawing an
-        # empty pair of axes for the others invites the reader to see a flat line at
-        # zero -- a measured null -- where there is simply no measurement.
-        ax2 = axes[1, j]
-        has_r2 = "regression_r2" in g and g["regression_r2"].notna().any()
-        has_rho = "spearman_norm_target" in g and g["spearman_norm_target"].notna().any()
-        if not (has_r2 or has_rho):
-            ax2.set_axis_off()
-            ax2.text(0.5, 0.5, f"{task} is not a magnitude task\n(no continuous target)",
-                     ha="center", va="center", fontsize=9, color="#888888",
-                     transform=ax2.transAxes)
-            ax.set_xlabel("layer")
-            continue
-        if has_r2:
-            ax2.plot(g.layer, g.regression_r2, marker="s", ms=3.4, lw=1.8,
-                     color="#c1442e", label=r"regression $R^2$ (raw magnitude)")
-        if has_rho:
-            ax2.plot(g.layer, g.spearman_norm_target.abs(), marker="^", ms=3.4, lw=1.6,
-                     color="#6a3d9a", label=r"|Spearman($\|h\|$, magnitude)|")
+    if has_cont:
+        ax2 = fig.add_subplot(gs[1, :])
+        for t in has_cont:
+            g = df[df.task == t].sort_values("layer")
+            ax2.plot(g.layer, g.regression_r2, marker="s", ms=4.2, lw=2.0, color="#c1442e",
+                     label=f"{t}: regression $R^2$ vs raw magnitude")
+            if "spearman_norm_target" in g:
+                ax2.plot(g.layer, g.spearman_norm_target.abs(), marker="^", ms=4.0, lw=1.7,
+                         color="#6a3d9a", label=rf"{t}: |Spearman($\|h\|$, magnitude)|")
+            if "acc_ordinal" in g:
+                ax2.plot(g.layer, g.acc_ordinal, marker="o", ms=3.4, lw=1.5, ls="--",
+                         color="#2e7d4f", alpha=0.8,
+                         label=f"{t}: ordinal probe accuracy (for contrast)")
         ax2.axhline(0, color="#444444", lw=1.0, ls=":")
         ax2.set_xlabel("layer")
         ax2.set_ylabel("continuous-readout score")
-        ax2.legend(fontsize=8, loc="best")
+        ax2.set_title("Continuous readouts — near-perfect $R^2$ despite mediocre binned accuracy",
+                      fontweight="bold", fontsize=11)
+        ax2.legend(fontsize=9, loc="best")
 
-    fig.suptitle(f"Magnitude vs feature ({cfg.model_tag})", fontweight="bold", fontsize=12)
-    fig.tight_layout()
+    fig.suptitle(f"Magnitude vs feature ({cfg.model_tag})", fontweight="bold", fontsize=13)
     return fig
 
 

@@ -98,18 +98,40 @@ def prepare_corpus(cfg: Config, corpus: str = "bookcorpus", mode: str = "sane") 
     from datasets import load_dataset
 
     repo, config_name = CORPORA[corpus]
-    ds = (load_dataset(repo, config_name, split="train", streaming=True)
-          if config_name else load_dataset(repo, split="train", streaming=True))
+    args = (repo, config_name) if config_name else (repo,)
+    print(f"[corpus:{corpus}] opening {repo} in streaming mode "
+          "(Hugging Face may download metadata)...", flush=True)
+    try:
+        ds = load_dataset(*args, split="train", streaming=True)
+        print(f"[corpus:{corpus}] streaming dataset ready", flush=True)
+    except RuntimeError as exc:
+        # `datasets` constructs a shared torch scalar for streaming iteration.
+        # Some macOS PyTorch builds ship a torch_shm_manager that cannot start;
+        # an in-memory Dataset has identical row order and avoids shared memory.
+        if "torch_shm_manager" not in str(exc):
+            raise
+        print("[corpus:bookcorpus] streaming unavailable (torch_shm_manager); "
+              "loading the non-streaming dataset instead. Download/preparation "
+              "progress should appear below.", flush=True)
+        ds = load_dataset(*args, split="train", streaming=False)
+        print(f"[corpus:{corpus}] non-streaming dataset ready ({len(ds)} rows)", flush=True)
 
     want = cfg.n_corpus * 3          # oversample; many documents are too short
+    print(f"[corpus:{corpus}] scanning until {want} documents have at least "
+          f"{cfg.corpus_seq_len} whitespace-separated tokens...", flush=True)
     texts = []
     for row in ds:
         t = row.get("text", "")
         if isinstance(t, str) and len(t.split()) >= cfg.corpus_seq_len:
             texts.append(t)
+            if len(texts) % 5000 == 0:
+                print(f"[corpus:{corpus}] collected {len(texts)}/{want} documents",
+                      flush=True)
         if len(texts) >= want:
             break
 
+    print(f"[corpus:{corpus}] selecting {cfg.n_corpus} documents with seed "
+          f"{cfg.id_seed} ({mode} mode)", flush=True)
     rng = np.random.default_rng(cfg.id_seed)
     idx = rng.permutation(len(texts))[: cfg.n_corpus]
     out = [texts[i] for i in idx]

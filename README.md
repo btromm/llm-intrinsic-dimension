@@ -147,10 +147,9 @@ per-task peaks actually depart from the corpus profile, or merely echo it.
 from the Toronto Book Corpus, so bookcorpus is the corpus the tasks are drawn
 from: it is both the baseline they can be compared against directly and the
 corpus whose GRIDE scale they borrow, which puts task ID and baseline ID on the
-same scale by construction. Pile and wikitext are still available
-(`--corpora bookcorpus pile wikitext`) but answer a different question — whether
-the ID profile is domain-specific rather than a property of this text — and each
-one costs an extraction plus two more tags to sweep in the `id` stage.
+same scale by construction. Other corpora are deliberately unsupported: using an
+out-of-domain corpus to choose the shared GRIDE scale silently changes the task ID
+measurement, which is the error this matched baseline is intended to prevent.
 `peak_alignment.csv` reports the spread of per-task peak layers: **a spread near
 zero would mean one shared abstraction phase, and would not support the
 hypothesis** — worth knowing before you interpret any correlation.

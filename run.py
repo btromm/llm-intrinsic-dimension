@@ -26,7 +26,7 @@ import torch
 from idprobe import data as D
 from idprobe import extract as E
 from idprobe import intrinsic_dim as ID
-from idprobe.config import ACTS, MAGNITUDE_TASKS, SCALES, TASKS, Config
+from idprobe.config import CORPORA, MAGNITUDE_TASKS, SCALES, TASKS, Config
 from idprobe.probes import prepare_data, train_probe
 
 SPLITS = ("train", "val", "test")
@@ -55,7 +55,9 @@ def stage_extract(cfg: Config, args) -> None:
       task, shuffled   -> "<task>__shuffled"      (Figure I.2 control)
       corpus           -> "_corpus_<corpus>_<mode>"
     """
+    print(f"[extract] loading {cfg.model_id} (device={E.resolve_device(cfg.device)})...", flush=True)
     tok, model, dev = E.load_model(cfg)
+    print(f"[extract] model ready on {dev}", flush=True)
     cfg.report_disk(model.config.num_hidden_layers, model.config.hidden_size)
     modes = ("sane",) if args.no_shuffled else cfg.modes
 
@@ -86,9 +88,12 @@ def stage_extract(cfg: Config, args) -> None:
             if path.exists() and not args.force:
                 print(f"  skip {tag} (exists)")
                 continue
+            print(f"[{tag}] preparing {cfg.n_corpus} source documents...", flush=True)
             texts = D.prepare_corpus(cfg, corpus=corpus, mode=mode)
+            print(f"[{tag}] tokenizing {len(texts)} documents to verify length...", flush=True)
             texts = E.filter_by_length(texts, tok, cfg.corpus_seq_len)
-            print(f"[{tag}] {len(texts)} sequences of exactly {cfg.corpus_seq_len} tokens")
+            print(f"[{tag}] extracting {len(texts)} sequences of exactly "
+                  f"{cfg.corpus_seq_len} tokens", flush=True)
             E.extract(texts, tok, model, dev, path,
                       batch_size=cfg.batch_size, exact_len=cfg.corpus_seq_len)
 
@@ -102,13 +107,52 @@ def _save_scales(d: dict) -> None:
     SCALES.write_text(json.dumps(d, indent=2, sort_keys=True) + "\n")
 
 
+def _requested_corpus_tags(cfg: Config, no_shuffled: bool) -> list[str]:
+    """Return existing activation tags for exactly the requested corpora."""
+    modes = ("sane",) if no_shuffled else cfg.modes
+    return [f"_corpus_{corpus}_{mode}" for corpus in cfg.corpora for mode in modes
+            if cfg.act_path(f"_corpus_{corpus}_{mode}", "train").exists()]
+
+
+def _cached_task_sweep(curves: dict, tag: str, n_layers: int,
+                       range_max: int) -> list[dict] | None:
+    """Recover one task's prior full k-sweep for an explicit reuse request.
+
+    Task sweeps depend only on the task activations, not on which corpus supplies
+    the shared k. Reusing them is therefore safe when changing only the reference
+    corpus, and avoids repeating the expensive GRIDE work for every task layer.
+    """
+    keys = [f"{tag}/{layer}" for layer in range(n_layers)]
+    if not all(key in curves for key in keys):
+        return None
+    expected_k = ID.empty_sweep(range_max)["k"]
+    out = []
+    for key in keys:
+        sc = curves[key]
+        if not np.array_equal(np.asarray(sc["k"]), expected_k):
+            return None
+        out.append({
+            name: np.asarray(value) if name != "n_unique" else int(value)
+            for name, value in sc.items()
+        })
+    return out
+
+
 def stage_id(cfg: Config, args) -> None:
     rdir = cfg.results_dir
     rdir.mkdir(parents=True, exist_ok=True)
 
-    # Corpora are any "_"-prefixed activation dir, so a shuffled-word-order
-    # control dropped in beside "_corpus" is picked up without config churn.
-    corpora = sorted(d.name for d in (ACTS / cfg.model_tag).glob("_*") if d.is_dir())
+    # Only consume the corpora requested by this run. Discovering every old
+    # `_corpus_*` directory would let stale activations silently contaminate a
+    # corrected run (for example, retaining Pile after switching to BookCorpus).
+    corpora = _requested_corpus_tags(cfg, args.no_shuffled)
+
+    cached_curves = {}
+    cache_path = rdir / "id_scaling_curves.json"
+    if args.reuse_task_id_sweeps:
+        if not cache_path.exists():
+            raise SystemExit(f"--reuse-task-id-sweeps requested but {cache_path} does not exist")
+        cached_curves = json.loads(cache_path.read_text())
 
     # Pass 1: sweep every scale for every layer of every tag.
     sweeps: dict[str, list[dict]] = {}
@@ -123,6 +167,16 @@ def stage_id(cfg: Config, args) -> None:
         # measures the spread of the token vocabulary rather than anything the
         # network computed.
         n_layers = E.n_layers_of(path)
+        reused = (_cached_task_sweep(cached_curves, tag, n_layers, cfg.id_range_max)
+                  if tag in cfg.tasks and cached_curves else None)
+        if reused is not None:
+            sweeps[tag] = reused
+            print(f"[{tag}] reused {n_layers} cached layer sweeps from {cache_path}")
+            continue
+        if tag in cfg.tasks and args.reuse_task_id_sweeps:
+            raise SystemExit(
+                f"cannot reuse cached sweep for {tag}: missing layers or incompatible k grid"
+            )
         sweeps[tag] = [
             ID.empty_sweep(cfg.id_range_max) if l in cfg.id_skip_layers
             else ID.id_scaling(E.load_layer(path, l), cfg.id_range_max,
@@ -804,8 +858,8 @@ def main() -> None:
                     help="second model for the H.1 cross-model CKA figure")
     ap.add_argument("--cka-task", default="bigram_shift",
                     help="task whose activations align the two models for CKA")
-    ap.add_argument("--corpora", nargs="+", default=None,
-                    help="ID corpora to use (default: bookcorpus)")
+    ap.add_argument("--corpora", nargs="+", default=None, choices=list(CORPORA),
+                    help="ID corpus to use (BookCorpus only)")
     ap.add_argument("--no-shuffled", action="store_true",
                     help="skip the word-shuffled control (Fig 1 centre, Fig I.2)")
     ap.add_argument("--no-corpus", action="store_true",
@@ -818,6 +872,9 @@ def main() -> None:
                     help="corpus whose GRIDE scale the probing tasks borrow")
     ap.add_argument("--rechoose", action="store_true",
                     help="re-derive GRIDE scales from the sweep and repin scales.json")
+    ap.add_argument("--reuse-task-id-sweeps", action="store_true",
+                    help="reuse task entries from the existing id_scaling_curves.json; "
+                         "safe when only changing the reference corpus")
     # Direction 1 -- class-conditional ID
     ap.add_argument("--cid-k", type=int, default=None,
                     help="override the GRIDE scale for conditional ID (default: the "

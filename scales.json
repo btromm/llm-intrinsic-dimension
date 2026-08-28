@@ -1,11 +1,6 @@
 {
   "Qwen3-1.7B-Base": {
-    "_corpus": 16,
-    "_corpus_pile_sane": 64,
-    "_corpus_pile_shuffled": 64,
-    "tasks": 2
-  },
-  "Qwen3-1.7B-Base-randominit": {
-    "_corpus_pile_sane": 32
+    "_corpus_bookcorpus_sane": 32,
+    "_corpus_bookcorpus_shuffled": 64
   }
 }

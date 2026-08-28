@@ -75,11 +75,8 @@ N_TRAIN=""
 N_VAL=""
 N_TEST=""
 
-# Empty = the pipeline default, which is bookcorpus alone: the corpus Conneau
-# et al. built the probing sets from, hence both the baseline the tasks compare
-# against and the corpus whose GRIDE scale they borrow. Adding corpora
-# (CORPORA="bookcorpus pile wikitext") asks a different question -- whether the
-# ID profile is domain-specific -- at one extraction plus two more `id` tags each.
+# BookCorpus is the sole supported corpus: Conneau et al. built the probing sets
+# from it, so it is both the matched baseline and the source of the shared GRIDE k.
 CORPORA=""
 REFERENCE_CORPUS=""         # empty = pipeline default (bookcorpus)
 

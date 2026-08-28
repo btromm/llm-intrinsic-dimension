@@ -34,10 +34,10 @@ MAGNITUDE_TASKS: dict[str, "callable"] = {
     "sentence_length": lambda s: len(s.split()),
 }
 
+# The canonical `bookcorpus` ships a loading script, which `datasets` >=3 refuses.
+# SentEval's probing sets were drawn from BookCorpus, so it is the sole matched
+# baseline and the sole source of the shared GRIDE scale.
 CORPORA: dict[str, tuple[str, str | None]] = {
-    "pile": ("NeelNanda/pile-10k", None),
-    "wikitext": ("Salesforce/wikitext", "wikitext-103-raw-v1"),
-    # The canonical `bookcorpus` ships a loading script, which `datasets` >=3 refuses.
     "bookcorpus": ("rojagtap/bookcorpus", None),
 }
 
@@ -48,10 +48,10 @@ SENTEVAL_URL = (
 
 @dataclass
 class Config:
-    model_id: str = "Qwen/Qwen3-8B-Base"
+    model_id: str = "Qwen/Qwen3-1.7B-Base"
 
     # Scale. SentEval ships 100k/10k/10k per task. Storage for the activation
-    # tensor is n_sequences * (n_layers + 1) * d_model * 2 bytes; for Qwen3-8B
+    # tensor is n_sequences * (n_layers + 1) * d_model * 2 bytes; for Qwen3-1.7B
     # (36 layers, d=4096) that is ~300 KB per sequence, i.e. ~7.6 GB at n=25_000.
     # Config.report_disk() prints the real number before anything is written.
     # Seed for choosing WHICH sentences go in each split. Kept separate from
@@ -69,13 +69,8 @@ class Config:
     # Cheng et al. average ID over three corpora; Table C.1 lists a separate
     # GRIDE scale for the "sane" and "shuffled" mode of each. We keep only
     # bookcorpus, because Conneau et al. built all five probing sets from the
-    # Toronto Book Corpus: it is the corpus the tasks are drawn FROM, which makes
-    # it the baseline they can be compared against directly, and it is already
-    # the corpus whose scale they borrow (see reference_corpus below). Pile and
-    # wikitext answer a different question -- whether the ID profile is
-    # domain-specific rather than a property of this text -- and each extra
-    # corpus costs its own extraction plus two more tags to sweep in `id`:
-    #     python run.py extract --corpora bookcorpus pile wikitext
+    # Toronto Book Corpus: it is the corpus the tasks are drawn FROM, making it
+    # both the matched baseline and the source of the shared GRIDE scale.
     corpora: tuple[str, ...] = ("bookcorpus",)
 
     # Which corpus's GRIDE scale the probing tasks borrow. Conneau et al. built
