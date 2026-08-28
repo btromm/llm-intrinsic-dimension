@@ -1,0 +1,7 @@
+name: id
+channels: [conda-forge]
+dependencies:
+  - python=3.11          # 3.11 keeps dadapy's Cython wheels buildable; 3.13 often does not
+  - pip
+  - pip:
+      - -r requirements.txt

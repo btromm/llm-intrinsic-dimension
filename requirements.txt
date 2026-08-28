@@ -1,0 +1,33 @@
+# Core: install torch FIRST, matched to the H100's CUDA runtime, e.g.
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
+torch>=2.4
+# >=4.56: `from_pretrained(..., dtype=)` -- earlier versions spell it torch_dtype
+transformers>=4.56
+accelerate>=0.33
+datasets>=2.20
+huggingface_hub>=0.24
+hf_transfer>=0.1.6
+
+# dadapy pins numpy<2. Installing it into an env that already has numpy 2.x
+# will silently downgrade numpy, so build this env fresh.
+numpy>=1.26,<2
+scipy>=1.11
+scikit-learn>=1.4
+statsmodels>=0.14
+pandas>=2.0
+pyarrow>=15.0
+matplotlib>=3.8
+seaborn>=0.13
+tqdm>=4.66
+
+# notebooks/walkthrough.ipynb
+jupyter>=1.0
+nbclient>=0.9
+ipykernel>=6.29
+
+# GRIDE intrinsic-dimension estimator (Denti et al. 2022), by the same group as
+# Cheng et al. 2025 -- this is the reference implementation the paper uses.
+dadapy>=0.3.0
+
+# pytest for tests/ (added with the NEXT_STEPS directions)
+pytest>=8.0
