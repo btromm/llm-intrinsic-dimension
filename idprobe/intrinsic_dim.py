@@ -23,6 +23,7 @@ def id_scaling(
     range_max: int = 512,
     n_points: int | None = 10_000,
     seed: int = 0,
+    n_jobs: int | None = None,
 ) -> dict[str, np.ndarray]:
     """Run GRIDE across scales. Returns {'k','id','err','r','n_unique'}.
 
@@ -31,6 +32,10 @@ def id_scaling(
     of a task dataset it is the norm. Layer 0 is the raw token embedding of the
     LAST token, and SentEval sentences overwhelmingly end in the same punctuation,
     so a 2000-sentence split can collapse to ~5 distinct vectors.
+
+    `n_jobs` caps DADApy's internal parallelism (it otherwise grabs every core);
+    leave it None for a single-process sweep, set it to 1 when running one process
+    per task.
 
     The returned grid is ALWAYS `log2(range_max)` scales wide. A layer with too
     few unique points to support the sweep returns NaN rather than a silently
@@ -50,7 +55,12 @@ def id_scaling(
     if len(X) <= range_max:
         return {"k": ks, "id": nan, "err": nan, "r": nan, "n_unique": n_unique}
 
-    ids, errs, rs = Data(X, verbose=False).return_id_scaling_gride(range_max=range_max)
+    # DADApy hardcodes n_jobs to the machine's core count, which is right for one
+    # sweep over a big matrix and badly wrong when many processes each run many
+    # small sweeps: 4 concurrent callers then spawn 40 workers on 10 cores and
+    # everything slows to a crawl. `n_jobs=None` keeps DADApy's default.
+    data = Data(X, verbose=False) if n_jobs is None else Data(X, verbose=False, n_jobs=n_jobs)
+    ids, errs, rs = data.return_id_scaling_gride(range_max=range_max)
     pad = lambda a: np.pad(np.asarray(a, float), (0, max(0, n_scales - len(a))),
                            constant_values=np.nan)[:n_scales]
     return {"k": ks, "id": pad(ids), "err": pad(errs), "r": pad(rs), "n_unique": n_unique}
